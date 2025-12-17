@@ -136,11 +136,3 @@ The core logic uses **LangGraph** to define a directed flow:
 
 ---
 
-## 🔮 Future Improvements
-
-*   **Dynamic Knowledge Base:** Allow users to upload PDF textbooks to expand the RAG memory.
-*   **Symbolic Math:** Integrate `WolframAlpha` or `SymPy` tool calling for precise calculation steps.
-*   **History:** Persist chat history across sessions.
-
----
-
