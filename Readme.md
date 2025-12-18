@@ -37,7 +37,6 @@ The system is built on a Directed Acyclic Graph (DAG) where specialized agents c
 
 The following Mermaid diagram illustrates the exact `LangGraph` workflow defined in `src/graph.py`:
 
-```mermaid
 graph TD
     %% Nodes
     Input[User Input <br> Text / Image / Audio] --> Pre[Preprocessing <br> OCR / Transcribe]
