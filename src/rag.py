@@ -10,12 +10,16 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import PyPDFLoader, TextLoader
 from src.config import Config
 
+# REMOVED GLOBAL EMBEDDING INSTANTIATION
+# embeddings = OpenAIEmbeddings(...)
 
-embeddings = OpenAIEmbeddings(
-    model=Config.EMBEDDING_MODEL,
-    
-    dimensions=1536 
-)
+def get_embeddings():
+    """Helper to get Embeddings with latest API key."""
+    return OpenAIEmbeddings(
+        model=Config.EMBEDDING_MODEL,
+        dimensions=1536,
+        api_key=Config.get_openai_key()
+    )
 
 
 SEED_KNOWLEDGE = [
@@ -42,13 +46,10 @@ SEED_KNOWLEDGE = [
 ]
 
 def initialize_vector_store():
-    """
-    Initializes ChromaDB. If empty, loads curated seed data.
-    """
+    embeddings = get_embeddings() # Get dynamic instance
     
     if os.path.exists(Config.CHROMA_PATH) and os.listdir(Config.CHROMA_PATH):
         return Chroma(persist_directory=Config.CHROMA_PATH, embedding_function=embeddings)
-    
     
     print("--- Initializing Vector Store with Seed Data ---")
     docs = [

@@ -71,9 +71,8 @@ async def process_audio(audio_file):
     """
     Uses OpenAI GPT-4o-Transcribe API for ASR asynchronously.
     """
-    client = AsyncOpenAI(api_key=Config.OPENAI_API_KEY)
-    
-    
+    # Use dynamic key
+    client = AsyncOpenAI(api_key=Config.get_openai_key())
     
     if not hasattr(audio_file, "name"):
         audio_file.name = "audio.mp3" 

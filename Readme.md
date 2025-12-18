@@ -38,49 +38,37 @@ The system is built on a Directed Acyclic Graph (DAG) where specialized agents c
 The following Mermaid diagram illustrates the exact `LangGraph` workflow defined in `src/graph.py`:
 
 graph TD
-    %% --- Nodes ---
+    %% Nodes
+    Input[User Input <br> Text / Image / Audio] --> Pre[Preprocessing <br> OCR / Transcribe]
+    Pre --> UI_Verify[User Verification UI]
+    UI_Verify --> Parser(Parser Agent)
     
-    Input[User Input <br> Text / Image / Audio]:::io --> Pre[Preprocessing <br> OCR / Transcribe]:::agent
-    Pre --> UI_Verify[User Verification UI]:::agent
-    UI_Verify --> Parser(Parser Agent):::agent
+    Parser --> CheckClarify{Needs <br> Clarification?}
     
-    Parser --> CheckClarify{Needs <br> Clarification?}:::decision
+    CheckClarify -- Yes --> End([End / Error])
+    CheckClarify -- No --> Router(Router Agent)
     
-    CheckClarify -- Yes --> End([End / Error]):::fail
-    CheckClarify -- No --> Router(Router Agent):::agent
+    Router --> CheckCat{Category?}
     
-    Router --> CheckCat{Category?}:::decision
+    CheckCat -- Calculation --> Python(Python Solver Agent)
+    CheckCat -- Conceptual --> RAG(RAG Solver Agent)
     
-    CheckCat -- Calculation --> Python(Python Solver Agent):::solver
-    CheckCat -- Conceptual --> RAG(RAG Solver Agent):::solver
-    
-    Python --> Verifier(Verifier Agent):::check
+    Python --> Verifier(Verifier Agent)
     RAG --> Verifier
     
-    Verifier --> CheckCorrect{Is Correct?}:::decision
+    Verifier --> CheckCorrect{Is Correct?}
     
     CheckCorrect -- No --> End
-    CheckCorrect -- Yes --> Explainer(Explainer Agent):::agent
+    CheckCorrect -- Yes --> Explainer(Explainer Agent)
     
-    Explainer --> Output([Final Solution Display]):::io
+    Explainer --> Output([Final Solution Display])
 
-    %% --- Styling Definitions ---
-    
-    %% IO: Blue - Entry and Exit
-    classDef io fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1
-    
-    %% Agents: Neutral Grey - Orchestration steps
-    classDef agent fill:#f5f5f5,stroke:#616161,stroke-width:2px,color:#212121
-    
-    %% Solvers: Green - The heavy lifting
-    classDef solver fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20
-    
-    %% Decision/Check: Orange/Amber - Logic and Validation
-    classDef decision fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#bf360c
-    classDef check fill:#fff8e1,stroke:#ff8f00,stroke-width:2px,stroke-dasharray: 5 5,color:#ff6f00
-    
-    %% Fail: Red - Error states
-    classDef fail fill:#ffebee,stroke:#c62828,stroke-width:2px,color:#b71c1c
+    style Input fill:#f9f,stroke:#333,stroke-width:2px
+    style Python fill:#d4edda,stroke:#28a745
+    style RAG fill:#d4edda,stroke:#28a745
+    style Verifier fill:#fff3cd,stroke:#ffc107
+    style End fill:#f8d7da,stroke:#dc3545
+```
 
 ---
 
@@ -165,7 +153,7 @@ streamlit run main.py
 *   **LLM:** OpenAI GPT-4o
 *   **Vector DB:** ChromaDB
 *   **OCR:** EasyOCR (with OpenCV/NumPy)
-*   **Audio:** OpenAI gpt-4o-transcribe
+*   **Audio:** OpenAI gpt-4o-transcribe / GPT-4o-Audio
 
 ---
 
