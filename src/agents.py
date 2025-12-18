@@ -1,96 +1,114 @@
-from typing import TypedDict, List, Optional
+from typing import TypedDict, List
 from pydantic import BaseModel, Field
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import PydanticOutputParser
 from src.config import Config
 from src.rag import get_retriever
 
-# --- 1. State Definition ---
+
 class AgentState(TypedDict):
     raw_input: str
-    input_type: str  # text, image, audio
+    input_type: str 
     parsed_problem: dict
     retrieved_docs: List[str]
     solution_plan: str
     final_answer: str
     is_correct: bool
     explanation: str
-    messages: List[str] # Trace log
+    messages: List[str]
 
 llm = ChatOpenAI(model=Config.MODEL_NAME, temperature=0)
 
-# --- 2. Pydantic Models for Structured Output ---
 
 class ParsedProblem(BaseModel):
     problem_text: str = Field(description="Clean math problem text")
     topic: str = Field(description="Math topic e.g., Calculus, Algebra")
-    needs_clarification: bool = Field(description="True if input is ambiguous")
+    needs_clarification: bool = Field(description="True if input is ambiguous or nonsensical")
 
 class Verification(BaseModel):
     is_correct: bool = Field(description="Is the solution mathematically sound?")
     critique: str = Field(description="Critique of the solution logic")
 
-# --- 3. Agents ---
 
-def parser_agent(state: AgentState):
-    """Parses raw text into structured JSON."""
-    parser = PydanticOutputParser(pydantic_object=ParsedProblem)
+async def parser_agent(state: AgentState):
+    """Parses raw text into structured JSON asynchronously using Structured Output."""
+    
     prompt = ChatPromptTemplate.from_messages([
-        ("system", "You are a Math Parser. Convert input into a structured format.\n{format_instructions}"),
+        ("system", "You are a Math Parser. Convert input into a structured format."),
         ("user", "{raw_input}")
     ])
-    chain = prompt | llm | parser
+    
+    structured_llm = llm.with_structured_output(ParsedProblem)
+    chain = prompt | structured_llm
+    
     try:
-        result = chain.invoke({"raw_input": state["raw_input"], "format_instructions": parser.get_format_instructions()})
-        return {"parsed_problem": result.dict(), "messages": ["Parser: Successfully parsed input."]}
-    except:
-        # Fallback if parsing fails
-        return {"parsed_problem": {"needs_clarification": True}, "messages": ["Parser: Failed to parse."]}
+        result = await chain.ainvoke({"raw_input": state["raw_input"]})
+        return {
+            "parsed_problem": result.dict(), 
+            "messages": ["Parser: Successfully parsed input."]
+        }
+    except Exception as e:
+        return {
+            "parsed_problem": {"needs_clarification": True}, 
+            "messages": [f"Parser: Failed to parse. Error: {str(e)}"]
+        }
 
-def retrieve_agent(state: AgentState):
-    """RAG Step: Fetches formulas/concepts."""
+async def retrieve_agent(state: AgentState):
+    """RAG Step: Fetches formulas/concepts asynchronously and cites sources."""
     query = state["parsed_problem"]["problem_text"]
     retriever = get_retriever()
-    docs = retriever.invoke(query)
-    doc_texts = [d.page_content for d in docs]
-    return {"retrieved_docs": doc_texts, "messages": [f"Retrieved {len(docs)} documents."]}
+    
+    docs = await retriever.ainvoke(query)
+    
+    formatted_docs = []
+    for d in docs:
+        source = d.metadata.get("source", "Unknown")
+        content = d.page_content
+        formatted_docs.append(f"[Source: {source}]\n{content}")
+    
+    return {
+        "retrieved_docs": formatted_docs, 
+        "messages": [f"Retrieved {len(docs)} chunks from KB."]
+    }
 
-def solver_agent(state: AgentState):
+async def solver_agent(state: AgentState):
     """Solves the problem using context."""
-    context = "\n".join(state["retrieved_docs"])
+    
+    context = "\n\n".join(state["retrieved_docs"])
     problem = state["parsed_problem"]["problem_text"]
     
     prompt = ChatPromptTemplate.from_messages([
         ("system", "You are a JEE Math Tutor. Solve the problem step-by-step using the context provided."),
-        ("user", "Context: {context}\n\nProblem: {problem}\n\nProvide a solution plan and the final answer.")
+        ("user", "Context (use this to guide your solution):\n{context}\n\nProblem: {problem}\n\nProvide a solution plan and the final answer.")
     ])
     chain = prompt | llm
-    response = chain.invoke({"context": context, "problem": problem})
+    
+    response = await chain.ainvoke({"context": context, "problem": problem})
     return {"final_answer": response.content, "messages": ["Solver: Generated solution."]}
 
-def verifier_agent(state: AgentState):
-    """Critique the solution."""
-    parser = PydanticOutputParser(pydantic_object=Verification)
+async def verifier_agent(state: AgentState):
+    """Critique the solution using Structured Output."""
+    
     prompt = ChatPromptTemplate.from_messages([
-        ("system", "You are a Senior Math Professor. Verify the student's solution.\n{format_instructions}"),
+        ("system", "You are a Senior Math Professor. Verify the student's solution."),
         ("user", "Problem: {problem}\nProposed Solution: {solution}")
     ])
-    chain = prompt | llm | parser
+    
+    structured_llm = llm.with_structured_output(Verification)
+    chain = prompt | structured_llm
     
     problem = state["parsed_problem"]["problem_text"]
     solution = state["final_answer"]
     
-    result = chain.invoke({
+    result = await chain.ainvoke({
         "problem": problem, 
-        "solution": solution,
-        "format_instructions": parser.get_format_instructions()
+        "solution": solution
     })
     
     return {"is_correct": result.is_correct, "messages": [f"Verifier: Correctness = {result.is_correct}"]}
 
-def explainer_agent(state: AgentState):
-    """Formats the final output for the student."""
+async def explainer_agent(state: AgentState):
+    """Formats the final output for the student with LaTeX support."""
     prompt = ChatPromptTemplate.from_messages([
         ("system", """
         <Role>
@@ -98,28 +116,21 @@ def explainer_agent(state: AgentState):
         </Role>
         <formatting_rules>
             <general_format>
-                <allowed>Pure Markdown only.</allowed>
-                <forbidden>HTML tags (e.g., &lt;div&gt;, &lt;br&gt;).</forbidden>
+                <allowed>Markdown with LaTeX.</allowed>
             </general_format>
-                <mathematical_formulae>
-                    Identify and verify standard trigonometric identities and equations. Provide only correct and well-known formulas in plain text without any LaTeX or special rendering. If the formula is incorrect or improperly formatted, provide corrected versions.
-                </mathematical_formulae>
-
-                <math_notation>
-                    <directive>ABSOLUTELY NO LaTeX or special rendering code.</directive>
-                    <forbidden_symbols>$, $$, \, \frac, \sqrt, \times, \sin</forbidden_symbols>
-                    <required_style>Plain text readable by humans.</required_style>
-                    <required_usage>use π symbol for pi.</required_usage>
-                    <examples>
-                        <correct>3x + 5 = 0</correct>
-                        <correct>1/2</correct>
-                        <correct>x^2</correct>
-                        <correct>π</correct>
-                    </examples>
-                </math_notation>
+            <math_notation>
+                <directive>Use LaTeX for ALL mathematical expressions.</directive>
+                <inline_math>Wrap inline equations in single dollar signs, e.g., $x^2$.</inline_math>
+                <block_math>Wrap main equations in double dollar signs, e.g., $$ \\frac{{a}}{{b}} $$.</block_math>
+                <examples>
+                    <correct>The area is calculated as $$ A = \pi r^2 $$.</correct>
+                    <correct>Since $x > 0$, we proceed.</correct>
+                </examples>
+            </math_notation>
         </formatting_rules>"""),
-        ("user", "Solution: {solution}\n\nExplain this simply.")
+        ("user", "Solution: {solution}\n\nExplain this step-by-step with nice formatting.")
     ])
     chain = prompt | llm
-    res = chain.invoke({"solution": state["final_answer"]})
+    
+    res = await chain.ainvoke({"solution": state["final_answer"]})
     return {"explanation": res.content}
