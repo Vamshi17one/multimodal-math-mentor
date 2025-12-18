@@ -37,37 +37,22 @@ The system is built on a Directed Acyclic Graph (DAG) where specialized agents c
 
 The following Mermaid diagram illustrates the exact `LangGraph` workflow defined in `src/graph.py`:
 
+g```mermaid
 graph TD
-    %% Nodes
-    Input[User Input <br> Text / Image / Audio] --> Pre[Preprocessing <br> OCR / Transcribe]
-    Pre --> UI_Verify[User Verification UI]
-    UI_Verify --> Parser(Parser Agent)
+    Start[User Input] --> Processor[OCR / Audio Transcribe]
+    Processor --> Parser[Parser Agent]
+    Parser --> Router{Router Decision}
     
-    Parser --> CheckClarify{Needs <br> Clarification?}
+    Router -- "Calculation" --> Python[Python Code Solver]
+    Router -- "Conceptual" --> RAG[RAG Solver]
     
-    CheckClarify -- Yes --> End([End / Error])
-    CheckClarify -- No --> Router(Router Agent)
-    
-    Router --> CheckCat{Category?}
-    
-    CheckCat -- Calculation --> Python(Python Solver Agent)
-    CheckCat -- Conceptual --> RAG(RAG Solver Agent)
-    
-    Python --> Verifier(Verifier Agent)
+    Python --> Verifier[Verifier Agent]
     RAG --> Verifier
     
-    Verifier --> CheckCorrect{Is Correct?}
+    Verifier -- "Correct" --> Explainer[Explainer Agent]
+    Verifier -- "Incorrect" --> End[Stop & Error]
     
-    CheckCorrect -- No --> End
-    CheckCorrect -- Yes --> Explainer(Explainer Agent)
-    
-    Explainer --> Output([Final Solution Display])
-
-    style Input fill:#f9f,stroke:#333,stroke-width:2px
-    style Python fill:#d4edda,stroke:#28a745
-    style RAG fill:#d4edda,stroke:#28a745
-    style Verifier fill:#fff3cd,stroke:#ffc107
-    style End fill:#f8d7da,stroke:#dc3545
+    Explainer --> UI[Display Solution]
 ```
 
 ---
