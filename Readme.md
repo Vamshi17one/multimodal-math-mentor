@@ -28,6 +28,12 @@ The application uses a state machine (DAG) to orchestrate specialized agents:
 *   **Memory:** Correct, verified solutions are saved to a local JSON file to reinforce learning over time.
 
 ---
+## Frontend view
+
+```Image
+![alt text](image.png)
+```
+---
 
 ## 📐 System Architecture
 
