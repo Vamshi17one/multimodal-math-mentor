@@ -36,32 +36,29 @@ The core of the application is a **LangGraph StateGraph**. Below is the flow of 
 ```mermaid
 graph TD
     %% Nodes
-    User[User Input (Text/Image/Audio)] -->|Pre-processing| Processor[OCR / Transcribe]
-    Processor --> Parser[🕵️ Parser Agent]
+    Input[User Input <br> Text / Image / Audio] --> Pre[Preprocessing <br> OCR / Transcribe]
+    Pre --> UI_Verify[User Verification UI]
+    UI_Verify --> Parser(Parser Agent)
     
-    subgraph "LangGraph Workflow"
-        Parser --> Check{Clarification Needed?}
-        Check -- Yes --> End[🛑 End & Prompt User]
-        Check -- No --> Router[🔀 Router Agent]
-        
-        Router -- "Calculation Problem" --> Python[🐍 Python Solver Agent]
-        Router -- "Conceptual Question" --> RAG[📚 RAG Solver Agent]
-        
-        Python --> Verifier[⚖️ Verifier Agent]
-        RAG --> Verifier
-        
-        Verifier --> Quality{Is Correct?}
-        Quality -- No --> End
-        Quality -- Yes --> Explainer[💡 Explainer Agent]
-    end
+    Parser --> CheckClarify{Needs <br> Clarification?}
     
-    Explainer --> UI[Streamlit UI Display]
-
-    %% Styling
-    style User fill:#f9f,stroke:#333,stroke-width:2px
-    style Python fill:#d4edda,stroke:#28a745
-    style RAG fill:#d1ecf1,stroke:#17a2b8
-    style Verifier fill:#fff3cd,stroke:#ffc107
+    CheckClarify -- Yes --> End([End / Error])
+    CheckClarify -- No --> Router(Router Agent)
+    
+    Router --> CheckCat{Category?}
+    
+    CheckCat -- Calculation --> Python(Python Solver Agent)
+    CheckCat -- Conceptual --> RAG(RAG Solver Agent)
+    
+    Python --> Verifier(Verifier Agent)
+    RAG --> Verifier
+    
+    Verifier --> CheckCorrect{Is Correct?}
+    
+    CheckCorrect -- No --> End
+    CheckCorrect -- Yes --> Explainer(Explainer Agent)
+    
+    Explainer --> Output([Final Solution Display])
 ```
 
 ---
