@@ -3,7 +3,6 @@ from PIL import Image
 import io
 import sys
 import asyncio
-import re
 from pathlib import Path
 
 backend_path = Path(__file__).resolve().parents[3]
@@ -15,34 +14,20 @@ from src.graph import build_graph
 from src.rag import save_to_memory, process_and_index_files 
 
 st.set_page_config(page_title="Multimodal Math Mentor", layout="wide")
-
 st.title("🧮 Reliable Multimodal Math Mentor")
-
 
 with st.sidebar:
     st.header("⚙️ Settings")
     input_mode = st.radio("Select Input Mode", ["Text", "Image", "Audio"])
-    
     st.divider()
     st.header("📚 Knowledge Base")
-    st.info("Upload textbooks, formula sheets, or class notes to improve agent accuracy.")
-    
-    uploaded_kb_files = st.file_uploader(
-        "Upload Documents (PDF/TXT)", 
-        type=["pdf", "txt"], 
-        accept_multiple_files=True
-    )
-    
-    if uploaded_kb_files:
-        if st.button("Index Documents"):
-            with st.status("Ingesting Knowledge...", expanded=True) as status:
-                st.write("Chunking and Embedding (Batch Size: 5)...")
-                result_msg = process_and_index_files(uploaded_kb_files)
-                st.success(result_msg)
-                status.update(label="Knowledge Base Updated!", state="complete", expanded=False)
+    uploaded_kb_files = st.file_uploader("Upload Documents", type=["pdf", "txt"], accept_multiple_files=True)
+    if uploaded_kb_files and st.button("Index Documents"):
+        with st.status("Ingesting Knowledge..."):
+            result_msg = process_and_index_files(uploaded_kb_files)
+            st.success(result_msg)
 
 app = build_graph()
-
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
@@ -51,64 +36,52 @@ if "extracted_text" not in st.session_state:
 if "final_result" not in st.session_state:
     st.session_state.final_result = None
 
-
-async def handle_image_processing(img_bytes):
-    return await process_image(img_bytes)
-
-async def handle_audio_processing(audio_file):
-    return await process_audio(audio_file)
-
 async def run_agent_graph(initial_state, status_container):
     current_state = initial_state.copy()
-    
     async for event in app.astream(initial_state):
         for node_name, state_update in event.items():
-            status_container.write(f"✅ **{node_name.capitalize()}** finished task.")
+            status_container.write(f"✅ **{node_name.replace('_', ' ').capitalize()}** finished.")
             current_state.update(state_update)
-            
-            if "messages" in state_update and state_update["messages"]:
+            if "messages" in state_update:
                 st.caption(state_update["messages"][-1])
     return current_state
 
 
 raw_input = ""
-
 if input_mode == "Text":
     raw_input = st.text_area("Type your math problem here:")
-    if raw_input:
-        st.session_state.extracted_text = raw_input
-
+    if raw_input: st.session_state.extracted_text = raw_input
 elif input_mode == "Image":
     uploaded_file = st.file_uploader("Upload Math Problem", type=["jpg", "png"])
     if uploaded_file:
         image = Image.open(uploaded_file)
-        st.image(image, caption="Uploaded Image", use_column_width=True)
+        st.image(image, caption="Uploaded Image", width=300)
         if st.button("Extract Text (OCR)"):
             with st.spinner("Analyzing image..."):
-                img_byte_arr = io.BytesIO()
-                image.save(img_byte_arr, format=image.format)
-                img_bytes = img_byte_arr.getvalue()
-                text = asyncio.run(handle_image_processing(img_bytes))
+                img_bytes = io.BytesIO()
+                image.save(img_bytes, format=image.format)
+                text = asyncio.run(process_image(img_bytes.getvalue()))
                 st.session_state.extracted_text = text
-
 elif input_mode == "Audio":
     audio_file = st.file_uploader("Upload Audio Question", type=["mp3", "wav", "m4a"])
-    if audio_file:
-        if st.button("Transcribe Audio"):
-            with st.spinner("Listening..."):
-                text = asyncio.run(handle_audio_processing(audio_file))
-                st.session_state.extracted_text = text
+    if audio_file and st.button("Transcribe"):
+        with st.spinner("Listening..."):
+            text = asyncio.run(process_audio(audio_file))
+            st.session_state.extracted_text = text
 
 
 if st.session_state.extracted_text:
     st.subheader("📝 Verify Input")
-    edited_text = st.text_area("Confirm or Edit Question:", value=st.session_state.extracted_text, height=100)
+    edited_text = st.text_area("Confirm Question:", value=st.session_state.extracted_text, height=100)
     
     if st.button("Solve Problem"):
         initial_state = {
             "raw_input": edited_text,
             "input_type": input_mode.lower(),
-            "messages": []
+            "messages": [],
+            "retrieved_docs": [],
+            "code_snippet": "",
+            "code_output": ""
         }
         
         with st.status("Agents working...", expanded=True) as status:
@@ -119,56 +92,53 @@ if st.session_state.extracted_text:
 
 if st.session_state.final_result:
     res = st.session_state.final_result
-    has_answer = "final_answer" in res
+    
     
     if res.get("parsed_problem", {}).get("needs_clarification"):
-        st.error("⚠️ The parser found the problem ambiguous. Please edit the text above.")
-        st.warning(f"Trace: {res.get('messages', [])}")
-
-    elif has_answer:
+        st.error("⚠️ Ambiguous input. Please edit the text.")
+    
+    
+    elif res.get("is_correct") is False:
+        st.error("🛑 The Verifier blocked this solution.")
+        st.write(f"**Critique:** {res.get('messages', ['Unknown Error'])[-1]}")
+        st.info("Please reformulate your question or add more context.")
+        
+    else:
         st.divider()
         st.subheader("💡 Solution")
+        st.markdown(res.get("explanation", "No explanation generated."))
         
-        if res.get("is_correct") is False:
-            st.warning("⚠️ The Verifier flagged this solution as potentially incorrect.")
         
-        # --- NEW DISPLAY LOGIC ---
-        explanation_text = res.get("explanation", res["final_answer"])
-        
-        # 1. Attempt to extract a block equation to show it prominently using st.latex
-        # Looks for patterns like $$ ... $$ or \[ ... \]
-        latex_blocks = re.findall(r'\$\$(.*?)\$\$', explanation_text, re.DOTALL)
-        
-        if latex_blocks:
-            # Display the last found major equation as the "Final Answer" highlight
-            st.caption("Final Result:")
-            st.latex(latex_blocks[-1])
-        
-        # 2. Render the full text with Markdown (Streamlit converts $...$ to LaTeX automatically)
-        st.markdown(explanation_text)
-        # -------------------------
+        with st.expander("🕵️ Agent Logic & Tools"):
+            cat = res.get("problem_category", "Unknown")
+            st.info(f"**Router Decision:** {cat.capitalize()} Path")
+            
+            if cat == "calculation":
+                st.write("**🐍 Python Code Executed:**")
+                st.code(res.get("code_snippet", ""), language="python")
+                st.write("**Output:**")
+                st.code(res.get("code_output", ""))
+            
+            if cat == "conceptual" and res.get("retrieved_docs"):
+                st.write("**📚 RAG Context:**")
+                for doc in res["retrieved_docs"]:
+                    st.text(doc[:200] + "...")
 
         
-        with st.expander("📚 Referenced Sources (RAG)"):
-            docs = res.get("retrieved_docs", [])
-            if docs:
-                for i, doc in enumerate(docs):
-                    st.markdown(f"**Chunk {i+1}:**")
-                    st.text(doc) 
-            else:
-                st.write("No specific documents retrieved. Used general knowledge.")
-
-        st.divider()
-        st.subheader("🧠 Teach the System")
         col1, col2 = st.columns(2)
-        
         with col1:
-            if st.button("✅ Accurate"):
+            if st.button("✅ Helpful"):
                 save_to_memory(res["parsed_problem"]["problem_text"], res["final_answer"], True)
-                st.success("Stored in memory!")
-        
+                st.success("Saved!")
         with col2:
-            if st.button("❌ Incorrect"):
-                st.info("Feedback logged.")
-    else:
-        st.error("⚠️ An unexpected error occurred.")
+            st.button("❌ Incorrect")
+            
+    
+    st.divider()
+    if st.button("🔄 Clear Response", type="primary"):
+        
+        st.session_state.final_result = None
+        
+        
+        
+        st.rerun()

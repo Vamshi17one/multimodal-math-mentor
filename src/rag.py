@@ -10,7 +10,7 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import PyPDFLoader, TextLoader
 from src.config import Config
 
-# Initialize Embeddings
+
 embeddings = OpenAIEmbeddings(
     model=Config.EMBEDDING_MODEL,
     
@@ -80,7 +80,7 @@ def process_and_index_files(uploaded_files: List):
     
     documents = []
     
-    # 1. Process Files into Documents
+    
     with tempfile.TemporaryDirectory() as temp_dir:
         for file in uploaded_files:
             temp_path = os.path.join(temp_dir, file.name)
@@ -108,7 +108,7 @@ def process_and_index_files(uploaded_files: List):
     
     chunked_docs = text_splitter.split_documents(documents)
     
-    # 3. Batch Indexing (Batch Size = 5)
+    
     vectorstore = initialize_vector_store()
     batch_size = Config.RAG_BATCH_SIZE
     total_chunks = len(chunked_docs)
