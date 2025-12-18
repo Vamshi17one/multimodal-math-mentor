@@ -29,10 +29,8 @@ The application uses a state machine (DAG) to orchestrate specialized agents:
 
 ---
 ## Frontend view
-
-```Image
 ![alt text](image.png)
-```
+
 ---
 
 ## 📐 System Architecture
