@@ -8,4 +8,5 @@ pydantic
 python-dotenv
 pillow
 easyocr
+numpy
 pypdf
