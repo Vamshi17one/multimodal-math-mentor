@@ -1,6 +1,6 @@
 # 🧮 Multimodal Math Mentor (Agentic RAG)
 
-**Multimodal Math Mentor** is an advanced AI-powered tutoring application designed to solve JEE-level math problems. It leverages **LangGraph** for agentic workflows, **RAG (Retrieval-Augmented Generation)** for formula retrieval, and **Multimodal AI** (GPT-4o, Whisper) to process text, images, and audio inputs.
+**Multimodal Math Mentor** is an advanced AI-powered tutoring application designed to solve JEE-level math problems. It leverages **LangGraph** for agentic workflows, **RAG (Retrieval-Augmented Generation)** for formula retrieval, and **Multimodal AI** (GPT-4o, GPT-4o-Transcribe) to process text, images, and audio inputs.
 
 Built with [Streamlit](https://streamlit.io/), [LangChain](https://www.langchain.com/), and [OpenAI](https://openai.com/).
 
@@ -10,8 +10,8 @@ Built with [Streamlit](https://streamlit.io/), [LangChain](https://www.langchain
 
 *   **Multimodal Inputs:**
     *   📝 **Text:** Direct problem input.
-    *   📷 **Vision:** Upload images of handwritten or printed math problems (OCR via GPT-4o).
-    *   🎙️ **Audio:** Voice out questions using OpenAI Whisper integration.
+    *   📷 **Vision:** Upload images of handwritten or printed math problems (OCR via Easyocr) for better OCR we can OCR via GPT-4o.
+    *   🎙️ **Audio:** Voice out questions using OpenAI GPT-4o-Transcribe integration.
 *   **Agentic Workflow (LangGraph):**
     *   **Parser:** Structures raw input into a mathematical schema.
     *   **Retriever:** Fetches relevant math formulas and theorems from a vector database.
@@ -35,7 +35,7 @@ multimodal-math-mentor/
 │   ├── agents.py          # LangChain Agents (Parser, Solver, Verifier)
 │   ├── config.py          # Configuration and Environment variables
 │   ├── graph.py           # LangGraph state machine definition
-│   ├── processors.py      # Audio (Whisper) and Image (GPT-4o) processing
+│   ├── processors.py      # Audio (GPT-4o-Transcribe) and Easyocr OCR processing
 │   └── rag.py             # RAG logic and Vector Store management
 ├── main.py                # Streamlit Frontend entry point
 ├── requirements.txt       # Python dependencies
@@ -53,7 +53,7 @@ multimodal-math-mentor/
 
 ### 2. Clone the Repository
 ```bash
-git clone https://github.com/yourusername/multimodal-math-mentor.git
+git clone https://github.com/Vamshi17one/multimodal-math-mentor.git
 cd multimodal-math-mentor
 ```
 
@@ -93,7 +93,9 @@ chromadb
 openai
 pydantic
 python-dotenv
-Pillow
+pillow
+easyocr
+pypdf
 ```
 </details>
 

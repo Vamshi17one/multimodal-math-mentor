@@ -20,7 +20,7 @@ def build_graph():
     # Conditional edge after parser
     def check_clarification(state):
         if state["parsed_problem"].get("needs_clarification"):
-            return END # Should trigger HITL in UI
+            return END 
         return "retriever"
 
     workflow.add_conditional_edges(
@@ -32,12 +32,11 @@ def build_graph():
     workflow.add_edge("retriever", "solver")
     workflow.add_edge("solver", "verifier")
 
-    # Loop back if incorrect (simplified for this demo, usually we'd add feedback to solver)
     def check_correctness(state):
         if state["is_correct"]:
             return "explainer"
         else:
-            return END # Stop and ask human for help or retry (HITL)
+            return END 
 
     workflow.add_conditional_edges(
         "verifier",
