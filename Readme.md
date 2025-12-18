@@ -1,45 +1,79 @@
-# 🧮 Multimodal Math Mentor (Agentic RAG)
 
-**Multimodal Math Mentor** is an advanced AI-powered tutoring application designed to solve JEE-level math problems. It leverages **LangGraph** for agentic workflows, **RAG (Retrieval-Augmented Generation)** for formula retrieval, and **Multimodal AI** (GPT-4o, GPT-4o-Transcribe) to process text, images, and audio inputs.
+# 🧮 Reliable Multimodal Math Mentor
 
-Built with [Streamlit](https://streamlit.io/), [LangChain](https://www.langchain.com/), and [OpenAI](https://openai.com/).
+**Multimodal Math Mentor** is an agentic AI tutoring application designed to solve complex math problems with high reliability. It moves beyond simple LLM text generation by using **LangGraph** to orchestrate specialized agents, **Python Code Execution** for precise calculations, and **RAG (Retrieval-Augmented Generation)** for conceptual grounding.
+
+Built with [Streamlit](https://streamlit.io/), [LangGraph](https://langchain-ai.github.io/langgraph/), and [OpenAI GPT-4o](https://openai.com/).
 
 ---
 
-## 🚀 Features
+## 🚀 Key Features
 
-*   **Multimodal Inputs:**
-    *   📝 **Text:** Direct problem input.
-    *   📷 **Vision:** Upload images of handwritten or printed math problems (OCR via Easyocr) for better OCR we can OCR via GPT-4o.
-    *   🎙️ **Audio:** Voice out questions using OpenAI GPT-4o-Transcribe integration.
-*   **Agentic Workflow (LangGraph):**
-    *   **Parser:** Structures raw input into a mathematical schema.
-    *   **Retriever:** Fetches relevant math formulas and theorems from a vector database.
-    *   **Solver:** Solves the problem step-by-step using retrieved context.
-    *   **Verifier:** Critiques the solution for logical correctness before showing it to the user.
-*   **Human-in-the-Loop (HITL):** Allows users to verify/edit parsed inputs before the agents start solving.
-*   **Self-Learning Memory:** Saves verified correct solutions to local storage to improve future context.
+### 1. 🧠 Intelligent Agentic Workflow (LangGraph)
+Unlike standard chatbots, this system uses a state machine to ensure quality:
+*   **Parser Agent:** Extracts the core math topic and identifies ambiguities.
+*   **Router Agent:** Dynamically decides the strategy:
+    *   **🧮 Calculation Path:** Routes to a **Python Solver** that writes and executes code to prevent LLM arithmetic hallucinations.
+    *   **📖 Conceptual Path:** Routes to a **RAG Solver** that retrieves theorems and definitions from the Knowledge Base.
+*   **Verifier Agent:** Critiques the solution for domain errors (e.g., dividing by zero) before showing it to the user.
+*   **Explainer Agent:** Converts the verified technical answer into a friendly, markdown-formatted tutorial.
+
+### 2. 👁️🎙️ Multimodal Inputs
+*   **Text:** Standard problem typing.
+*   **Vision (OCR):** Upload images of math problems. Uses **EasyOCR** (with OpenCV/NumPy) to extract text from images.
+*   **Audio:** Voice your questions. Uses **OpenAI GPT-4o-Transcribe** model for high-accuracy speech-to-text.
+
+### 3. 📚 Dynamic Knowledge Base (RAG)
+*   **Pre-loaded Seeds:** Comes with a curated list of math axioms and common pitfalls.
+*   **Custom Ingestion:** Upload PDF or TXT textbooks via the sidebar to expand the AI's knowledge.
+*   **Vector Search:** Uses **ChromaDB** and **OpenAI Embeddings** to retrieve relevant context.
+
+### 4. 🛡️ Human-in-the-Loop & Memory
+*   **Verification:** Users can edit the OCR/ASR extracted text before the agents begin solving.
+*   **Self-Learning:** Correct, user-verified solutions are saved to a local JSON memory file to reinforce learning.
+
+---
+
+## 📐 System Architecture
+
+The application follows a directed cyclic graph (DAG) architecture:
+
+```mermaid
+graph TD
+    Start[User Input] --> Processor[OCR / Audio Transcribe]
+    Processor --> Parser[Parser Agent]
+    Parser --> Router{Router Decision}
+    
+    Router -- "Calculation" --> Python[Python Code Solver]
+    Router -- "Conceptual" --> RAG[RAG Solver]
+    
+    Python --> Verifier[Verifier Agent]
+    RAG --> Verifier
+    
+    Verifier -- "Correct" --> Explainer[Explainer Agent]
+    Verifier -- "Incorrect" --> End[Stop & Error]
+    
+    Explainer --> UI[Display Solution]
+```
 
 ---
 
 ## 📂 Project Structure
 
-The project is organized as follows:
-
 ```text
 multimodal-math-mentor/
-├── data/                  # Stores vector DB and memory files
-│   ├── chroma_db/         # ChromaDB persistence directory
-│   └── problem_memory.json
-├── src/                   # Core application logic
-│   ├── agents.py          # LangChain Agents (Parser, Solver, Verifier)
-│   ├── config.py          # Configuration and Environment variables
-│   ├── graph.py           # LangGraph state machine definition
-│   ├── processors.py      # Audio (GPT-4o-Transcribe) and Easyocr OCR processing
-│   └── rag.py             # RAG logic and Vector Store management
-├── main.py                # Streamlit Frontend entry point
-├── requirements.txt       # Python dependencies
-├── .env                   # API Keys (Not included in repo)
+├── data/                  
+│   ├── chroma_db/         # Vector Database storage
+│   └── problem_memory.json # Saved verified solutions
+├── src/                   
+│   ├── agents.py          # AI Agents (Parser, Router, Solvers, Verifier)
+│   ├── config.py          # Env vars and Model configs
+│   ├── graph.py           # LangGraph StateGraph definition
+│   ├── processors.py      # EasyOCR and Audio handling
+│   └── rag.py             # ChromaDB and File Ingestion logic
+├── main.py                # Streamlit User Interface
+├── requirements.txt       # Dependencies
+├── .env                   # API Keys
 └── README.md              # Documentation
 ```
 
@@ -48,39 +82,33 @@ multimodal-math-mentor/
 ## 🛠️ Installation & Setup
 
 ### 1. Prerequisites
-*   Python 3.9 or higher.
-*   An [OpenAI API Key](https://platform.openai.com/) (GPT-4o access recommended).
+*   Python 3.9+
+*   [OpenAI API Key](https://platform.openai.com/) (Access to `gpt-4o` required).
 
-### 2. Clone the Repository
+### 2. Clone Repository
 ```bash
 git clone https://github.com/Vamshi17one/multimodal-math-mentor.git
 cd multimodal-math-mentor
 ```
 
-### 3. Create a Virtual Environment
-It is recommended to use a virtual environment to manage dependencies.
-
-**Windows:**
+### 3. Virtual Environment
 ```bash
+# Windows
 python -m venv venv
 venv\Scripts\activate
-```
 
-**Mac/Linux:**
-```bash
+# Mac/Linux
 python3 -m venv venv
 source venv/bin/activate
 ```
 
 ### 4. Install Dependencies
-Create a `requirements.txt` file (or use the one provided below) and install:
-
 ```bash
 pip install -r requirements.txt
 ```
 
 <details>
-<summary><strong>See content of requirements.txt</strong></summary>
+<summary><strong>requirements.txt</strong></summary>
 
 ```text
 streamlit
@@ -95,46 +123,42 @@ pydantic
 python-dotenv
 pillow
 easyocr
+numpy
 pypdf
 ```
 </details>
 
-### 5. Environment Configuration
-Create a `.env` file in the root directory and add your OpenAI API Key:
+### 5. Configuration
+Create a `.env` file in the root directory:
 
 ```ini
-OPENAI_API_KEY=sk-your-openai-api-key-here
+OPENAI_API_KEY=sk-proj-xxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
 ---
 
-## ▶️ How to Run
+## ▶️ Usage Guide
 
-1.  Navigate to the project root directory.
-2.  Run the Streamlit application:
-
-```bash
-streamlit run main.py
-```
-
-3.  The application will open in your browser at `http://localhost:8501`.
-
----
-
-## 🧠 System Architecture (The Graph)
-
-The core logic uses **LangGraph** to define a directed flow:
-
-1.  **Start:** User provides input (Text/Image/Audio).
-2.  **Processor:** Converts raw input to text (OCR/ASR).
-3.  **Parser Node:** Structuring the text into JSON.
-    *   *Conditional Edge:* If ambiguous, stop and ask User (HITL).
-4.  **Retriever Node:** Queries ChromaDB for math formulas.
-5.  **Solver Node:** Generates a solution using context.
-6.  **Verifier Node:** Checks if the solution is mathematically sound.
-    *   *Conditional Edge:* If incorrect, halt. If correct, proceed.
-7.  **Explainer Node:** Formats the answer for the student.
-8.  **End:** Display result.
+1.  **Run the App:**
+    ```bash
+    streamlit run main.py
+    ```
+2.  **Select Input Mode (Sidebar):**
+    *   Choose Text, Image, or Audio.
+3.  **Add Knowledge (Optional):**
+    *   In the sidebar, upload a PDF math chapter.
+    *   Click "Index Documents".
+4.  **Solve:**
+    *   Input your problem.
+    *   Review the extracted text.
+    *   Click "Solve Problem".
+5.  **View Logic:**
+    *   Expand the **"🕵️ Agent Logic & Tools"** section in the result to see the generated Python code or the specific RAG documents used.
 
 ---
 
+## ⚠️ Limitations
+*   **Sandboxing:** The Python solver uses `exec()`. While useful for math, strictly limit this to local/controlled environments.
+*   **OCR:** Handwritten math recognition depends heavily on image clarity.
+
+---
