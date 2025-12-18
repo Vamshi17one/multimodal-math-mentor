@@ -1,60 +1,86 @@
-
 # 🧮 Reliable Multimodal Math Mentor
 
-**Multimodal Math Mentor** is an agentic AI tutoring application designed to solve complex math problems with high reliability. It moves beyond simple LLM text generation by using **LangGraph** to orchestrate specialized agents, **Python Code Execution** for precise calculations, and **RAG (Retrieval-Augmented Generation)** for conceptual grounding.
+**Multimodal Math Mentor** is an advanced agentic AI application designed to act as a reliable math tutor. Unlike standard chatbots that often hallucinate on arithmetic, this system uses a **Graph-based Agentic Workflow (LangGraph)** to separate logic into specialized roles.
 
-Built with [Streamlit](https://streamlit.io/), [LangGraph](https://langchain-ai.github.io/langgraph/), and [OpenAI GPT-4o](https://openai.com/).
+It combines **Python Code Execution** for precise calculations, **RAG (Retrieval-Augmented Generation)** for conceptual grounding, and **Multimodal Inputs** (Vision & Audio) to solve problems accurately.
 
 ---
 
 ## 🚀 Key Features
 
-### 1. 🧠 Intelligent Agentic Workflow (LangGraph)
-Unlike standard chatbots, this system uses a state machine to ensure quality:
-*   **Parser Agent:** Extracts the core math topic and identifies ambiguities.
-*   **Router Agent:** Dynamically decides the strategy:
-    *   **🧮 Calculation Path:** Routes to a **Python Solver** that writes and executes code to prevent LLM arithmetic hallucinations.
-    *   **📖 Conceptual Path:** Routes to a **RAG Solver** that retrieves theorems and definitions from the Knowledge Base.
-*   **Verifier Agent:** Critiques the solution for domain errors (e.g., dividing by zero) before showing it to the user.
-*   **Explainer Agent:** Converts the verified technical answer into a friendly, markdown-formatted tutorial.
+### 1. 🧠 Agentic State Machine (LangGraph)
+The system is built on a Directed Acyclic Graph (DAG) where specialized agents collaborate:
+*   **Parser Agent:** Structurally analyzes the input to determine if clarification is needed.
+*   **Router Agent:** Intelligently routes problems:
+    *   **Calculation Path:** Uses a **Python Solver** to write and execute code, ensuring arithmetic accuracy (e.g., integrals, matrix multiplication).
+    *   **Conceptual Path:** Uses a **RAG Solver** to retrieve axioms and definitions from the vector database.
+*   **Verifier Agent:** rigorous check stage that reviews the answer for domain errors (e.g., division by zero, unit mismatches) before showing it to the user.
+*   **Explainer Agent:** Translates the technical output into a clear, educational Markdown explanation.
 
-### 2. 👁️🎙️ Multimodal Inputs
-*   **Text:** Standard problem typing.
-*   **Vision (OCR):** Upload images of math problems. Uses **EasyOCR** (with OpenCV/NumPy) to extract text from images.
-*   **Audio:** Voice your questions. Uses **OpenAI GPT-4o-Transcribe** model for high-accuracy speech-to-text.
+### 2. 👁️🎙️ Multimodal Interaction
+*   **Visual Problem Solving:** Upload images of handwritten or printed math. The system uses **EasyOCR** with confidence checking to digitize the problem.
+*   **Voice Mode:** Ask questions verbally. Uses **OpenAI GPT-4o-Transcribe** for high-fidelity speech-to-text.
+*   **Interactive Verification:** Users can review and edit extracted text *before* the agents start solving.
 
-### 3. 📚 Dynamic Knowledge Base (RAG)
-*   **Pre-loaded Seeds:** Comes with a curated list of math axioms and common pitfalls.
-*   **Custom Ingestion:** Upload PDF or TXT textbooks via the sidebar to expand the AI's knowledge.
-*   **Vector Search:** Uses **ChromaDB** and **OpenAI Embeddings** to retrieve relevant context.
+### 3. 📚 Knowledge Base & RAG
+*   **Dynamic Ingestion:** Upload PDF textbooks or TXT notes via the sidebar.
+*   **Vector Search:** Powered by **ChromaDB** and **OpenAI Embeddings**.
+*   **Seed Knowledge:** Comes pre-loaded with critical math rules (e.g., Derivative Power Rules, Euler's Identity).
 
-### 4. 🛡️ Human-in-the-Loop & Memory
-*   **Verification:** Users can edit the OCR/ASR extracted text before the agents begin solving.
-*   **Self-Learning:** Correct, user-verified solutions are saved to a local JSON memory file to reinforce learning.
+### 4. ⚙️ Robust Configuration
+*   **Dynamic API Key Management:** Securely input your OpenAI Key in the UI (Session-based).
+*   **Memory:** "Helpful" solutions are saved to a local JSON file to reinforce learning over time.
 
 ---
 
 ## 📐 System Architecture
 
-The application follows a directed cyclic graph (DAG) architecture:
+The following Mermaid diagram illustrates the exact `LangGraph` workflow defined in `src/graph.py`:
 
-```mermaid
 graph TD
-    Start[User Input] --> Processor[OCR / Audio Transcribe]
-    Processor --> Parser[Parser Agent]
-    Parser --> Router{Router Decision}
+    %% --- Nodes ---
     
-    Router -- "Calculation" --> Python[Python Code Solver]
-    Router -- "Conceptual" --> RAG[RAG Solver]
+    Input[User Input <br> Text / Image / Audio]:::io --> Pre[Preprocessing <br> OCR / Transcribe]:::agent
+    Pre --> UI_Verify[User Verification UI]:::agent
+    UI_Verify --> Parser(Parser Agent):::agent
     
-    Python --> Verifier[Verifier Agent]
+    Parser --> CheckClarify{Needs <br> Clarification?}:::decision
+    
+    CheckClarify -- Yes --> End([End / Error]):::fail
+    CheckClarify -- No --> Router(Router Agent):::agent
+    
+    Router --> CheckCat{Category?}:::decision
+    
+    CheckCat -- Calculation --> Python(Python Solver Agent):::solver
+    CheckCat -- Conceptual --> RAG(RAG Solver Agent):::solver
+    
+    Python --> Verifier(Verifier Agent):::check
     RAG --> Verifier
     
-    Verifier -- "Correct" --> Explainer[Explainer Agent]
-    Verifier -- "Incorrect" --> End[Stop & Error]
+    Verifier --> CheckCorrect{Is Correct?}:::decision
     
-    Explainer --> UI[Display Solution]
-```
+    CheckCorrect -- No --> End
+    CheckCorrect -- Yes --> Explainer(Explainer Agent):::agent
+    
+    Explainer --> Output([Final Solution Display]):::io
+
+    %% --- Styling Definitions ---
+    
+    %% IO: Blue - Entry and Exit
+    classDef io fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1
+    
+    %% Agents: Neutral Grey - Orchestration steps
+    classDef agent fill:#f5f5f5,stroke:#616161,stroke-width:2px,color:#212121
+    
+    %% Solvers: Green - The heavy lifting
+    classDef solver fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20
+    
+    %% Decision/Check: Orange/Amber - Logic and Validation
+    classDef decision fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#bf360c
+    classDef check fill:#fff8e1,stroke:#ff8f00,stroke-width:2px,stroke-dasharray: 5 5,color:#ff6f00
+    
+    %% Fail: Red - Error states
+    classDef fail fill:#ffebee,stroke:#c62828,stroke-width:2px,color:#b71c1c
 
 ---
 
@@ -63,18 +89,17 @@ graph TD
 ```text
 multimodal-math-mentor/
 ├── data/                  
-│   ├── chroma_db/         # Vector Database storage
+│   ├── chroma_db/          # Persistent Vector Database
 │   └── problem_memory.json # Saved verified solutions
 ├── src/                   
-│   ├── agents.py          # AI Agents (Parser, Router, Solvers, Verifier)
-│   ├── config.py          # Env vars and Model configs
-│   ├── graph.py           # LangGraph StateGraph definition
-│   ├── processors.py      # EasyOCR and Audio handling
-│   └── rag.py             # ChromaDB and File Ingestion logic
-├── main.py                # Streamlit User Interface
-├── requirements.txt       # Dependencies
-├── .env                   # API Keys
-└── README.md              # Documentation
+│   ├── agents.py           # Agent definitions (Parser, Router, Solvers, Verifier)
+│   ├── config.py           # Configuration & Environment handling
+│   ├── graph.py            # LangGraph StateGraph construction
+│   ├── processors.py       # OCR (EasyOCR) & Audio (gpt-4o-transcribe/GPT-4o) logic
+│   └── rag.py              # ChromaDB setup and Document Ingestion
+├── main.py                 # Streamlit Frontend application
+├── requirements.txt        # Python dependencies
+└── README.md               # Documentation
 ```
 
 ---
@@ -82,8 +107,8 @@ multimodal-math-mentor/
 ## 🛠️ Installation & Setup
 
 ### 1. Prerequisites
-*   Python 3.9+
-*   [OpenAI API Key](https://platform.openai.com/) (Access to `gpt-4o` required).
+*   Python 3.10+
+*   An [OpenAI API Key](https://platform.openai.com/) (Requires access to `gpt-4o`).
 
 ### 2. Clone Repository
 ```bash
@@ -91,7 +116,7 @@ git clone https://github.com/Vamshi17one/multimodal-math-mentor.git
 cd multimodal-math-mentor
 ```
 
-### 3. Virtual Environment
+### 3. Create Virtual Environment
 ```bash
 # Windows
 python -m venv venv
@@ -107,58 +132,44 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-<details>
-<summary><strong>requirements.txt</strong></summary>
-
-```text
-streamlit
-langchain
-langchain-openai
-langchain-community
-langchain-core
-langgraph
-chromadb
-openai
-pydantic
-python-dotenv
-pillow
-easyocr
-numpy
-pypdf
-```
-</details>
-
-### 5. Configuration
-Create a `.env` file in the root directory:
-
-```ini
-OPENAI_API_KEY=sk-proj-xxxxxxxxxxxxxxxxxxxxxxxx
+### 5. Run the Application
+```bash
+streamlit run main.py
 ```
 
 ---
 
-## ▶️ Usage Guide
+## 📖 Usage Guide
 
-1.  **Run the App:**
-    ```bash
-    streamlit run main.py
-    ```
-2.  **Select Input Mode (Sidebar):**
-    *   Choose Text, Image, or Audio.
-3.  **Add Knowledge (Optional):**
-    *   In the sidebar, upload a PDF math chapter.
-    *   Click "Index Documents".
+1.  **Settings (Sidebar):**
+    *   Enter your **OpenAI API Key** and click "Apply Key".
+    *   (Optional) Upload reference PDFs and click "Index Documents" to train the RAG system.
+2.  **Select Input Mode:**
+    *   **Text:** Type the math problem directly.
+    *   **Image:** Upload a `.jpg` or `.png`. Click "Extract Text" to run OCR.
+    *   **Audio:** Upload an audio file. Click "Transcribe".
+3.  **Verify:**
+    *   The system displays the extracted text. Edit it if necessary to correct OCR errors.
 4.  **Solve:**
-    *   Input your problem.
-    *   Review the extracted text.
-    *   Click "Solve Problem".
-5.  **View Logic:**
-    *   Expand the **"🕵️ Agent Logic & Tools"** section in the result to see the generated Python code or the specific RAG documents used.
+    *   Click **"Confirm & Solve Problem"**.
+    *   Watch the status indicators as agents process the request.
+5.  **Review:**
+    *   Expand **"🕵️ Agent Logic & Tools"** to see the Python code executed or documents retrieved.
+
+---
+
+## 📦 Tech Stack
+
+*   **Frontend:** [Streamlit](https://streamlit.io/)
+*   **Orchestration:** [LangGraph](https://langchain-ai.github.io/langgraph/) & [LangChain](https://www.langchain.com/)
+*   **LLM:** OpenAI GPT-4o
+*   **Vector DB:** ChromaDB
+*   **OCR:** EasyOCR (with OpenCV/NumPy)
+*   **Audio:** OpenAI gpt-4o-transcribe
 
 ---
 
 ## ⚠️ Limitations
-*   **Sandboxing:** The Python solver uses `exec()`. While useful for math, strictly limit this to local/controlled environments.
-*   **OCR:** Handwritten math recognition depends heavily on image clarity.
 
----
+*   **Python Sandboxing:** The solver utilizes `exec()` to run generated code. While this provides powerful calculation capabilities, it is designed for local demonstration purposes.
+*   **OCR Accuracy:** Handwriting recognition depends on image contrast and clarity. Complex matrix notation may sometimes require manual correction in the verification stage.
