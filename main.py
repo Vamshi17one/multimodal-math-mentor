@@ -11,8 +11,9 @@ if str(backend_path) not in sys.path:
     sys.path.append(str(backend_path))
 
 # Import Config to check key existence
-from src.config import Config 
+from src.config import Config
 from src.processors import process_image, process_audio
+
 from src.graph import build_graph
 from src.rag import save_to_memory, process_and_index_files 
 
