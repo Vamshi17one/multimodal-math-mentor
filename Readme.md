@@ -16,7 +16,7 @@ The application uses a state machine (DAG) to orchestrate specialized agents:
     *   **📚 Conceptual Path:** Routes to a **RAG Solver** that performs vector searches on the Knowledge Base for theorems and definitions.
 *   **Verifier Agent:** rigorous self-correction step that checks for domain errors (e.g., dividing by zero), unit mismatches, or logical fallacies.
 *   **Explainer Agent:** Synthesizes the verified technical output into a clear, Markdown-formatted educational explanation.
-
+dkhid
 ### 2. 👁️🎙️ Multimodal Inputs
 *   **Text:** Standard mathematical problem typing.
 *   **Vision (OCR):** Upload images (`.jpg`, `.png`). Uses **EasyOCR** to extract mathematical notation from handwritten or printed images.
